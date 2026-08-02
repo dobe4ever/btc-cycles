@@ -14,6 +14,14 @@ import { cn } from "@/lib/utils"
 
 type Mode = "election" | "halving"
 
+// Every historical bull market peak has occurred well within the first 800 days of a
+// cycle (2012 election: day 394, 2016 election: day 404, 2020 election: day 377,
+// 2016 halving: day 526, 2020 halving: day 553). Capping the peak search here prevents
+// the tail-end recovery — where the price creeps back up toward the NEXT cycle's bull
+// run — from being misidentified as the cycle's boom peak. The cap is only applied to
+// completed (non-current) cycles; the live cycle searches all available data.
+const PEAK_SEARCH_MAX_DAYS = 800
+
 const MODES: { id: Mode; label: string; anchor: string; blurb: string }[] = [
   {
     id: "election",
@@ -41,10 +49,15 @@ export function BtcCycles() {
       let peakDay = 0
       let last: number | null = null
       let lastDay = 0
+      // For completed cycles cap the peak search so the tail-end recovery (which bleeds
+      // into the next cycle's bull run) isn't reported as the boom peak.
+      const peakSearchCutoff = c.current
+        ? CYCLE_START_DAY + data.length - 1          // live cycle: all available data
+        : CYCLE_START_DAY + PEAK_SEARCH_MAX_DAYS     // completed: first 800 days only
       for (let day = CYCLE_START_DAY; day < CYCLE_START_DAY + data.length; day++) {
         const v = data[day - CYCLE_START_DAY][c.key] as number | null
         if (v != null) {
-          if (v > peak) {
+          if (day <= peakSearchCutoff && v > peak) {
             peak = v
             peakDay = day
           }
