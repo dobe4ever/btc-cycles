@@ -1,9 +1,9 @@
 import { BTC_START, BTC_PRICES } from "./btc-data"
 
-// A cycle spans from 1 year BEFORE the anchor (election / halving day = 0)
-// to 3 years AFTER it.
-export const CYCLE_START_DAY = -365
-export const CYCLE_END_DAY = 1095
+// A cycle spans from the anchor (election / halving day = 0)
+// to the day before the next anchor, ~4 years later.
+export const CYCLE_START_DAY = 0
+export const CYCLE_END_DAY = 1460
 export const CYCLE_LENGTH = CYCLE_END_DAY - CYCLE_START_DAY + 1 // 1461
 
 const MS_PER_DAY = 86_400_000
@@ -83,8 +83,8 @@ export function resolveCycles(defs: CycleDef[]): ResolvedCycle[] {
   return defs.map((def) => {
     const anchorMs = toUTCDate(def.anchor)
     const startMs = addDays(anchorMs, CYCLE_START_DAY)
-    // Baseline = price 1 year before the anchor. Fall back to the earliest
-    // available price inside the window if the exact start is missing.
+    // Baseline = price on the anchor day (start of the cycle). Fall back to the
+    // earliest available price inside the window if the exact start is missing.
     let baseline = priceAtMs(startMs)
     if (baseline == null) {
       for (let day = CYCLE_START_DAY + 1; day <= CYCLE_END_DAY; day++) {

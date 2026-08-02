@@ -128,7 +128,7 @@ export function CycleChart({ defs, anchorName }: CycleChartProps) {
             type="number"
             dataKey="day"
             domain={[CYCLE_START_DAY, CYCLE_END_DAY]}
-            ticks={[CYCLE_START_DAY, 0, 365, 730, CYCLE_END_DAY]}
+            ticks={[0, 365, 730, 1095, CYCLE_END_DAY]}
             tickFormatter={xTickLabel}
             tick={{ fill: "var(--muted-foreground)", fontSize: 12 }}
             tickLine={{ stroke: "var(--border)" }}
@@ -146,7 +146,7 @@ export function CycleChart({ defs, anchorName }: CycleChartProps) {
             allowDataOverflow
             width={52}
           />
-          {/* baseline (1x = price one year before the anchor) */}
+          {/* baseline (1x = price on the anchor day) */}
           <ReferenceLine
             y={1}
             stroke="var(--muted-foreground)"
