@@ -29,12 +29,6 @@ const MODES: { id: Mode; label: string; anchor: string; blurb: string }[] = [
   },
 ]
 
-function dayOffsetLabel(day: number, anchor: string): string {
-  if (day === 0) return `on ${anchor} day`
-  const n = Math.abs(day)
-  return `${n} day${n === 1 ? "" : "s"} ${day < 0 ? "before" : "after"} ${anchor}`
-}
-
 export function BtcCycles() {
   const [mode, setMode] = useState<Mode>("election")
   const active = MODES.find((m) => m.id === mode)!
@@ -45,8 +39,8 @@ export function BtcCycles() {
     return cycles.map((c, i) => {
       let peak = -Infinity
       let peakDay = 0
-      let low = Infinity
-      let lowDay = 0
+      let last: number | null = null
+      let lastDay = 0
       for (let day = CYCLE_START_DAY; day < CYCLE_START_DAY + data.length; day++) {
         const v = data[day - CYCLE_START_DAY][c.key] as number | null
         if (v != null) {
@@ -54,22 +48,18 @@ export function BtcCycles() {
             peak = v
             peakDay = day
           }
-          if (v < low) {
-            low = v
-            lowDay = day
-          }
+          last = v
+          lastDay = day
         }
       }
       return {
         cycle: c,
         color: colorFor(i, cycles.length),
-        anchorDate: dateForCycleDay(c, 0),
         peak: isFinite(peak) ? peak : null,
         peakDay,
-        peakDate: dateForCycleDay(c, peakDay),
-        low: isFinite(low) ? low : null,
-        lowDay,
-        lowDate: dateForCycleDay(c, lowDay),
+        last,
+        lastDay,
+        startDate: dateForCycleDay(c, CYCLE_START_DAY),
       }
     })
   }, [defs])
@@ -137,23 +127,13 @@ export function BtcCycles() {
       {/* Legend / per-cycle summary */}
       <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {summary.map((s) => (
-          <div
-            key={s.cycle.key}
-            className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4"
-            style={{ borderTop: `3px solid ${s.color}` }}
-          >
-            {/* Heading: anchor (day 0) date, color matched to the chart line */}
+          <div key={s.cycle.key} className="flex flex-col gap-2 rounded-lg border border-border bg-card p-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="inline-block size-3 rounded-full" style={{ backgroundColor: s.color }} aria-hidden />
-                <div className="flex flex-col leading-tight">
-                  <span className="text-sm font-semibold" style={{ color: s.color }}>
-                    {formatDate(s.anchorDate)}
-                  </span>
-                  <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                    {active.anchor} day · {s.cycle.label}
-                  </span>
-                </div>
+                <span className="font-semibold" style={{ color: s.color }}>
+                  {s.cycle.label}
+                </span>
               </div>
               {s.cycle.current && (
                 <span className="rounded-full bg-[#f7931a]/15 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-[#f7931a]">
@@ -161,37 +141,23 @@ export function BtcCycles() {
                 </span>
               )}
             </div>
-
-            {/* Peak */}
-            <div className="flex flex-col gap-0.5 rounded-md bg-secondary/40 p-2.5">
-              <div className="flex items-baseline justify-between">
-                <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Peak</span>
-                <span className="text-base font-semibold tabular-nums" style={{ color: s.color }}>
+            <div className="flex flex-col gap-1 text-xs text-muted-foreground">
+              <div className="flex justify-between">
+                <span>Cycle start</span>
+                <span className="tabular-nums text-foreground">{formatDate(s.startDate)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Peak</span>
+                <span className="tabular-nums text-foreground">
                   {s.peak != null ? `${s.peak.toFixed(1)}x` : "—"}
                 </span>
               </div>
-              {s.peak != null && (
-                <>
-                  <span className="text-[11px] text-muted-foreground">{dayOffsetLabel(s.peakDay, active.anchor)}</span>
-                  <span className="text-[11px] tabular-nums text-foreground">{formatDate(s.peakDate)}</span>
-                </>
-              )}
-            </div>
-
-            {/* Lowest */}
-            <div className="flex flex-col gap-0.5 rounded-md bg-secondary/40 p-2.5">
-              <div className="flex items-baseline justify-between">
-                <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Lowest</span>
-                <span className="text-base font-semibold tabular-nums text-foreground">
-                  {s.low != null ? `${s.low.toFixed(2)}x` : "—"}
+              <div className="flex justify-between">
+                <span>{s.cycle.current ? "Latest" : "Cycle end"}</span>
+                <span className="tabular-nums text-foreground">
+                  {s.last != null ? `${s.last.toFixed(2)}x` : "—"}
                 </span>
               </div>
-              {s.low != null && (
-                <>
-                  <span className="text-[11px] text-muted-foreground">{dayOffsetLabel(s.lowDay, active.anchor)}</span>
-                  <span className="text-[11px] tabular-nums text-foreground">{formatDate(s.lowDate)}</span>
-                </>
-              )}
             </div>
           </div>
         ))}
