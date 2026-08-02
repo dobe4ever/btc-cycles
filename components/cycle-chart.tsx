@@ -120,7 +120,7 @@ export function CycleChart({ defs, anchorName }: CycleChartProps) {
   const currentCycle = cycles.find((c) => c.current)
 
   return (
-    <div className="h-[440px] w-full sm:h-[520px]">
+    <div className="h-110 w-full sm:h-130">
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={data} margin={{ top: 16, right: 16, bottom: 8, left: 4 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
