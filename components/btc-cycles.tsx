@@ -47,7 +47,10 @@ export function BtcCycles() {
       let peakDay = 0
       let low = Infinity
       let lowDay = 0
-      for (let day = CYCLE_START_DAY; day < CYCLE_START_DAY + data.length; day++) {
+      // Only search from the anchor (day 0) onward. Day 0 is the election/halving,
+      // which ends the previous cycle and starts this one, so the pre-anchor window
+      // belongs to the previous cycle and must be excluded from this cycle's top/bottom.
+      for (let day = 0; day < CYCLE_START_DAY + data.length; day++) {
         const v = data[day - CYCLE_START_DAY][c.key] as number | null
         if (v != null) {
           if (v > peak) {
