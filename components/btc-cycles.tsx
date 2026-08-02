@@ -52,11 +52,30 @@ export function BtcCycles() {
           lastDay = day
         }
       }
+      // Bottom = lowest multiplier that occurs strictly AFTER the peak day.
+      // This captures the trough of the boom/bust, not the pre-run-up low.
+      let bottom = Infinity
+      let bottomDay = 0
+      if (isFinite(peak)) {
+        for (let day = peakDay + 1; day < CYCLE_START_DAY + data.length; day++) {
+          const v = data[day - CYCLE_START_DAY][c.key] as number | null
+          if (v != null && v < bottom) {
+            bottom = v
+            bottomDay = day
+          }
+        }
+      }
+      const hasBottom = isFinite(bottom)
+      // Drawdown from peak to bottom as a negative percentage.
+      const drawdown = hasBottom && isFinite(peak) ? (bottom / peak - 1) * 100 : null
       return {
         cycle: c,
         color: colorFor(i, cycles.length),
         peak: isFinite(peak) ? peak : null,
         peakDay,
+        bottom: hasBottom ? bottom : null,
+        bottomDay: hasBottom ? bottomDay : null,
+        drawdown,
         last,
         lastDay,
         startDate: dateForCycleDay(c, CYCLE_START_DAY),
@@ -150,6 +169,18 @@ export function BtcCycles() {
                 <span>Peak</span>
                 <span className="tabular-nums text-foreground">
                   {s.peak != null ? `${s.peak.toFixed(1)}x` : "—"}
+                  {s.peak != null && (
+                    <span className="text-muted-foreground"> · day {s.peakDay}</span>
+                  )}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span>Bottom</span>
+                <span className="tabular-nums text-foreground">
+                  {s.drawdown != null ? `${s.drawdown.toFixed(0)}%` : "—"}
+                  {s.bottomDay != null && (
+                    <span className="text-muted-foreground"> · day {s.bottomDay}</span>
+                  )}
                 </span>
               </div>
               <div className="flex justify-between">
