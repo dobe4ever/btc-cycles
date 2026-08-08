@@ -166,3 +166,159 @@ export function buildCycleData(defs: CycleDef[]): CycleChartResult {
 export function dateForCycleDay(cycle: ResolvedCycle, day: number): number {
   return addDays(cycle.anchorMs, day)
 }
+
+
+export interface CycleStats {
+  breakout: {
+    date: number
+    day: number
+    price: number
+  } | null
+  peak: {
+    date: number
+    day: number
+    price: number
+    multiplier: number
+  } | null
+  bottom: {
+    date: number
+    day: number
+    price: number
+    drawdown: number
+  } | null
+  end: {
+    price: number
+    multiplier: number
+  } | null
+}
+
+/**
+ * Calculate the compact stats displayed in each cycle summary card.
+ *
+ * Breakout = first day the current cycle closes above the previous cycle's peak.
+ * For the first displayed cycle, the previous ATH is the highest BTC price
+ * available before that cycle's anchor.
+ */
+export function getCycleStats(
+  cycle: ResolvedCycle,
+  previousCycle: ResolvedCycle | null,
+): CycleStats {
+  // Find the previous cycle's peak. For the first displayed cycle,
+  // use the highest BTC price available before its anchor.
+  let previousPeak = 0
+
+  if (previousCycle) {
+    for (let day = CYCLE_START_DAY; day <= 800; day++) {
+      const price = priceAtMs(addDays(previousCycle.anchorMs, day))
+      if (price != null && price > previousPeak) {
+        previousPeak = price
+      }
+    }
+  } else {
+    // Search all available BTC history before this cycle's anchor.
+    const anchorIndex = Math.round((cycle.anchorMs - BTC_START_MS) / MS_PER_DAY)
+
+    for (let i = 0; i < anchorIndex; i++) {
+      const price = BTC_PRICES[i]
+      if (price > previousPeak) {
+        previousPeak = price
+      }
+    }
+  }
+
+  // Find first day that breaks the previous cycle's ATH.
+  let breakout: CycleStats["breakout"] = null
+
+  if (previousPeak > 0) {
+    for (let day = CYCLE_START_DAY; day <= CYCLE_END_DAY; day++) {
+      const price = priceAtMs(addDays(cycle.anchorMs, day))
+
+      if (price != null && price > previousPeak) {
+        breakout = {
+          date: addDays(cycle.anchorMs, day),
+          day,
+          price,
+        }
+        break
+      }
+    }
+  }
+
+  // Find peak during the first 800 days of the cycle.
+  let peakPrice = -Infinity
+  let peakDay = 0
+
+  for (let day = CYCLE_START_DAY; day <= Math.min(800, CYCLE_END_DAY); day++) {
+    const price = priceAtMs(addDays(cycle.anchorMs, day))
+
+    if (price != null && price > peakPrice) {
+      peakPrice = price
+      peakDay = day
+    }
+  }
+
+  const peak =
+    isFinite(peakPrice)
+      ? {
+          date: addDays(cycle.anchorMs, peakDay),
+          day: peakDay,
+          price: peakPrice,
+          multiplier: cycle.baseline > 0 ? peakPrice / cycle.baseline : 0,
+        }
+      : null
+
+  // Bottom = lowest price strictly after the peak.
+  let bottomPrice = Infinity
+  let bottomDay = 0
+
+  if (peak) {
+    for (let day = peak.day + 1; day <= CYCLE_END_DAY; day++) {
+      const price = priceAtMs(addDays(cycle.anchorMs, day))
+
+      if (price != null && price < bottomPrice) {
+        bottomPrice = price
+        bottomDay = day
+      }
+    }
+  }
+
+  const bottom =
+    isFinite(bottomPrice) && peak
+      ? {
+          date: addDays(cycle.anchorMs, bottomDay),
+          day: bottomDay,
+          price: bottomPrice,
+          drawdown: (bottomPrice / peak.price - 1) * 100,
+        }
+      : null
+
+  // End = last available price for current cycle, otherwise cycle end.
+  let endPrice: number | null = null
+  const endDay = cycle.current
+    ? cycle.lastDataDay ?? CYCLE_END_DAY
+    : CYCLE_END_DAY
+
+  for (let day = endDay; day >= CYCLE_START_DAY; day--) {
+    const price = priceAtMs(addDays(cycle.anchorMs, day))
+
+    if (price != null) {
+      endPrice = price
+      break
+    }
+  }
+
+  const end =
+    endPrice != null
+      ? {
+          price: endPrice,
+          multiplier: cycle.baseline > 0 ? endPrice / cycle.baseline : 0,
+        }
+      : null
+
+  return {
+    breakout,
+    peak,
+    bottom,
+    end,
+  }
+}
