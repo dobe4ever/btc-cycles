@@ -157,114 +157,106 @@ export function BtcCycles() {
           return (
             <div
               key={cycle.key}
-              className="flex min-w-0 flex-col rounded-lg border border-border bg-card p-3"
+              className="min-w-0 rounded-lg border border-border bg-card px-3.5 py-3"
             >
-              {/* Header */}
-              <div className="mb-2 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span
-                    className="size-2.5 shrink-0 rounded-full"
-                    style={{ backgroundColor: color }}
-                    aria-hidden
-                  />
-                  <span
-                    className="text-sm font-semibold"
-                    style={{ color }}
-                  >
-                    {cycle.label}
-                  </span>
-                </div>
+              {/* Cycle date / identity */}
+              <div className="mb-2.5 flex items-center justify-between">
+                <span
+                  className="text-[13px] font-semibold tracking-tight tabular-nums"
+                  style={{ color }}
+                >
+                  {formatShortDate(cycle.anchorMs)}
+                </span>
 
                 {cycle.current && (
-                  <span className="rounded-full bg-[#f7931a]/15 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide text-[#f7931a]">
+                  <span className="rounded-full bg-[#f7931a]/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-[#f7931a]">
                     Current
                   </span>
                 )}
               </div>
 
-              {/* Election */}
-              <div className="mb-2 border-b border-border pb-2">
-                <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                  Election
-                </div>
-                <div className="mt-0.5 text-xs font-medium tabular-nums">
-                  {formatShortDate(cycle.anchorMs)}
-                </div>
-              </div>
-
-              {/* Stats */}
-              <div className="flex flex-col gap-1.5 text-[11px]">
-                {/* ATH Breakout */}
-                <div className="grid grid-cols-[72px_1fr] gap-1">
-                  <span className="text-muted-foreground">Breakout</span>
+              {/* Statistics */}
+              <div className="flex flex-col gap-1.5 text-[11px] leading-4 tabular-nums">
+                {/* Breakout */}
+                <div className="flex min-w-0 items-baseline">
+                  <span className="w-[54px] shrink-0 text-muted-foreground">
+                    Breakout
+                  </span>
 
                   {stats.breakout ? (
-                    <div className="min-w-0">
-                      <div className="truncate font-medium tabular-nums">
-                        {formatShortDate(stats.breakout.date)}
-                      </div>
-                      <div className="tabular-nums text-muted-foreground">
-                        day {stats.breakout.day} · {formatPrice(stats.breakout.price)}
-                      </div>
-                    </div>
+                    <span className="min-w-0 truncate text-foreground">
+                      {formatShortDate(stats.breakout.date)}
+                      <span className="text-muted-foreground">
+                        {" · "}day {stats.breakout.day}
+                        {" · "}{formatPrice(stats.breakout.price)}
+                      </span>
+                    </span>
                   ) : (
                     <span className="text-muted-foreground">—</span>
                   )}
                 </div>
 
                 {/* Peak */}
-                <div className="grid grid-cols-[72px_1fr] gap-1">
-                  <span className="text-muted-foreground">Peak</span>
+                <div className="flex min-w-0 items-baseline">
+                  <span className="w-[54px] shrink-0 text-muted-foreground">
+                    Peak
+                  </span>
 
                   {stats.peak ? (
-                    <div className="min-w-0">
-                      <div className="truncate font-medium tabular-nums">
-                        {formatShortDate(stats.peak.date)}
-                      </div>
-                      <div className="tabular-nums text-muted-foreground">
-                        day {stats.peak.day} · {formatPrice(stats.peak.price)} ·{" "}
-                        <span className="text-foreground">
-                          {formatMultiplier(stats.peak.multiplier)}
-                        </span>
-                      </div>
-                    </div>
+                    <span className="min-w-0 truncate text-foreground">
+                      {formatShortDate(stats.peak.date)}
+                      <span className="text-muted-foreground">
+                        {" · "}day {stats.peak.day}
+                        {" · "}{formatPrice(stats.peak.price)}
+                        {" · "}
+                      </span>
+                      <span className="font-medium">
+                        {formatMultiplier(stats.peak.multiplier)}
+                      </span>
+                    </span>
                   ) : (
                     <span className="text-muted-foreground">—</span>
                   )}
                 </div>
 
                 {/* Bottom */}
-                <div className="grid grid-cols-[72px_1fr] gap-1">
-                  <span className="text-muted-foreground">Bottom</span>
+                <div className="flex min-w-0 items-baseline">
+                  <span className="w-[54px] shrink-0 text-muted-foreground">
+                    Bottom
+                  </span>
 
                   {stats.bottom ? (
-                    <div className="min-w-0">
-                      <div className="truncate font-medium tabular-nums">
-                        {formatShortDate(stats.bottom.date)}
-                      </div>
-                      <div className="tabular-nums text-muted-foreground">
-                        day {stats.bottom.day} · {formatPrice(stats.bottom.price)} ·{" "}
-                        <span className="text-foreground">
-                          {Math.round(stats.bottom.drawdown)}%
-                        </span>
-                      </div>
-                    </div>
+                    <span className="min-w-0 truncate text-foreground">
+                      {formatShortDate(stats.bottom.date)}
+                      <span className="text-muted-foreground">
+                        {" · "}day {stats.bottom.day}
+                        {" · "}{formatPrice(stats.bottom.price)}
+                        {" · "}
+                      </span>
+                      <span className="font-medium">
+                        {Math.round(stats.bottom.drawdown)}%
+                      </span>
+                    </span>
                   ) : (
                     <span className="text-muted-foreground">—</span>
                   )}
                 </div>
 
                 {/* End */}
-                <div className="grid grid-cols-[72px_1fr] gap-1">
-                  <span className="text-muted-foreground">End</span>
+                <div className="flex min-w-0 items-baseline">
+                  <span className="w-[54px] shrink-0 text-muted-foreground">
+                    End
+                  </span>
 
                   {stats.end ? (
-                    <div className="tabular-nums font-medium">
-                      {formatPrice(stats.end.price)}
-                      <span className="ml-1.5 text-muted-foreground">
-                        · {formatMultiplier(stats.end.multiplier)}
+                    <span className="min-w-0 truncate text-foreground">
+                      <span className="font-medium">
+                        {formatPrice(stats.end.price)}
                       </span>
-                    </div>
+                      <span className="text-muted-foreground">
+                        {" · "}{formatMultiplier(stats.end.multiplier)}
+                      </span>
+                    </span>
                   ) : (
                     <span className="text-muted-foreground">—</span>
                   )}
