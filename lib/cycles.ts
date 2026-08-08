@@ -30,6 +30,20 @@ export function priceAtMs(ms: number): number | null {
   return p > 0 ? p : null
 }
 
+/**
+ * Highest price recorded on or before a given day (ms) — i.e. the all-time high
+ * going into that date. Used to find the "previous cycle peak" a new cycle must
+ * break above to print a fresh ATH. Returns null if there's no data yet.
+ */
+export function athUpToMs(ms: number): number | null {
+  const end = Math.min(Math.round((ms - BTC_START_MS) / MS_PER_DAY), BTC_PRICES.length - 1)
+  let ath = 0
+  for (let i = 0; i <= end; i++) {
+    if (BTC_PRICES[i] > ath) ath = BTC_PRICES[i]
+  }
+  return ath > 0 ? ath : null
+}
+
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
 export function formatDate(ms: number): string {
