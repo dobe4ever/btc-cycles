@@ -14,6 +14,42 @@ import {
 import { cn } from "@/lib/utils"
 type Mode = "election" | "halving"
 
+function formatPrice(value: number): string {
+  const abs = Math.abs(value)
+
+  if (abs >= 1_000_000_000) {
+    return `$${(value / 1_000_000_000).toFixed(1)}B`
+  }
+
+  if (abs >= 1_000_000) {
+    return `$${(value / 1_000_000).toFixed(1)}M`
+  }
+
+  if (abs >= 1_000) {
+    return `$${(value / 1_000).toFixed(1)}k`
+  }
+
+  return `$${Math.round(value).toLocaleString("en-US")}`
+}
+
+function formatMultiplier(value: number): string {
+  if (value >= 1000) return `${(value / 1000).toFixed(1)}k×`
+  if (value >= 100) return `${Math.round(value)}×`
+  if (value >= 10) return `${Math.round(value)}×`
+  return `${Math.round(value)}×`
+}
+
+function formatShortDate(ms: number): string {
+  const d = new Date(ms)
+
+  const months = [
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+  ]
+
+  return `${months[d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()}`
+}
+
 // Every historical bull market peak has occurred well within the first 800 days of a
 // cycle (2012 election: day 394, 2016 election: day 404, 2020 election: day 377,
 // 2016 halving: day 526, 2020 halving: day 553). Capping the peak search here prevents
@@ -43,57 +79,14 @@ export function BtcCycles() {
   const defs = mode === "election" ? ELECTION_CYCLES : HALVING_CYCLES
 
   const summary = useMemo(() => {
-    const { data, cycles } = buildCycleData(defs)
-    return cycles.map((c, i) => {
-      let peak = -Infinity
-      let peakDay = 0
-      let last: number | null = null
-      let lastDay = 0
-      // For completed cycles cap the peak search so the tail-end recovery (which bleeds
-      // into the next cycle's bull run) isn't reported as the boom peak.
-      const peakSearchCutoff = c.current
-        ? CYCLE_START_DAY + data.length - 1          // live cycle: all available data
-        : CYCLE_START_DAY + PEAK_SEARCH_MAX_DAYS     // completed: first 800 days only
-      for (let day = CYCLE_START_DAY; day < CYCLE_START_DAY + data.length; day++) {
-        const v = data[day - CYCLE_START_DAY][c.key] as number | null
-        if (v != null) {
-          if (day <= peakSearchCutoff && v > peak) {
-            peak = v
-            peakDay = day
-          }
-          last = v
-          lastDay = day
-        }
-      }
-      // Bottom = lowest multiplier that occurs strictly AFTER the peak day.
-      // This captures the trough of the boom/bust, not the pre-run-up low.
-      let bottom = Infinity
-      let bottomDay = 0
-      if (isFinite(peak)) {
-        for (let day = peakDay + 1; day < CYCLE_START_DAY + data.length; day++) {
-          const v = data[day - CYCLE_START_DAY][c.key] as number | null
-          if (v != null && v < bottom) {
-            bottom = v
-            bottomDay = day
-          }
-        }
-      }
-      const hasBottom = isFinite(bottom)
-      // Drawdown from peak to bottom as a negative percentage.
-      const drawdown = hasBottom && isFinite(peak) ? (bottom / peak - 1) * 100 : null
-      return {
-        cycle: c,
-        color: colorFor(i, cycles.length),
-        peak: isFinite(peak) ? peak : null,
-        peakDay,
-        bottom: hasBottom ? bottom : null,
-        bottomDay: hasBottom ? bottomDay : null,
-        drawdown,
-        last,
-        lastDay,
-        startDate: dateForCycleDay(c, CYCLE_START_DAY),
-      }
-    })
+    const { cycles } = buildCycleData(defs)
+
+    return cycles.map((cycle, i) => ({
+      cycle,
+      color: colorFor(i, cycles.length),
+      stats: getCycleStats(cycle, cycles[i - 1] ?? null),
+      startDate: dateForCycleDay(cycle, CYCLE_START_DAY),
+    }))
   }, [defs])
 
   return (
@@ -156,55 +149,130 @@ export function BtcCycles() {
         </p>
       </section>
 
-      {/* Legend / per-cycle summary */}
+      {/* Compact cycle summaries */}
       <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {summary.map((s) => (
-          <div key={s.cycle.key} className="flex flex-col gap-2 rounded-lg border border-border bg-card p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="inline-block size-3 rounded-full" style={{ backgroundColor: s.color }} aria-hidden />
-                <span className="font-semibold" style={{ color: s.color }}>
-                  {s.cycle.label}
-                </span>
+        {summary.map((s) => {
+          const { cycle, color, stats } = s
+
+          return (
+            <div
+              key={cycle.key}
+              className="flex min-w-0 flex-col rounded-lg border border-border bg-card p-3"
+            >
+              {/* Header */}
+              <div className="mb-2 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span
+                    className="size-2.5 shrink-0 rounded-full"
+                    style={{ backgroundColor: color }}
+                    aria-hidden
+                  />
+                  <span
+                    className="text-sm font-semibold"
+                    style={{ color }}
+                  >
+                    {cycle.label}
+                  </span>
+                </div>
+
+                {cycle.current && (
+                  <span className="rounded-full bg-[#f7931a]/15 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide text-[#f7931a]">
+                    Current
+                  </span>
+                )}
               </div>
-              {s.cycle.current && (
-                <span className="rounded-full bg-[#f7931a]/15 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-[#f7931a]">
-                  Current
-                </span>
-              )}
-            </div>
-            <div className="flex flex-col gap-1 text-xs text-muted-foreground">
-              <div className="flex justify-between">
-                <span>Cycle start</span>
-                <span className="tabular-nums text-foreground">{formatDate(s.startDate)}</span>
+
+              {/* Election */}
+              <div className="mb-2 border-b border-border pb-2">
+                <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                  Election
+                </div>
+                <div className="mt-0.5 text-xs font-medium tabular-nums">
+                  {formatShortDate(cycle.anchorMs)}
+                </div>
               </div>
-              <div className="flex justify-between">
-                <span>Peak</span>
-                <span className="tabular-nums text-foreground">
-                  {s.peak != null ? `${s.peak.toFixed(1)}x` : "—"}
-                  {s.peak != null && (
-                    <span className="text-muted-foreground"> · day {s.peakDay}</span>
+
+              {/* Stats */}
+              <div className="flex flex-col gap-1.5 text-[11px]">
+                {/* ATH Breakout */}
+                <div className="grid grid-cols-[72px_1fr] gap-1">
+                  <span className="text-muted-foreground">Breakout</span>
+
+                  {stats.breakout ? (
+                    <div className="min-w-0">
+                      <div className="truncate font-medium tabular-nums">
+                        {formatShortDate(stats.breakout.date)}
+                      </div>
+                      <div className="tabular-nums text-muted-foreground">
+                        day {stats.breakout.day} · {formatPrice(stats.breakout.price)}
+                      </div>
+                    </div>
+                  ) : (
+                    <span className="text-muted-foreground">—</span>
                   )}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span>Bottom</span>
-                <span className="tabular-nums text-foreground">
-                  {s.drawdown != null ? `${s.drawdown.toFixed(0)}%` : "—"}
-                  {s.bottomDay != null && (
-                    <span className="text-muted-foreground"> · day {s.bottomDay}</span>
+                </div>
+
+                {/* Peak */}
+                <div className="grid grid-cols-[72px_1fr] gap-1">
+                  <span className="text-muted-foreground">Peak</span>
+
+                  {stats.peak ? (
+                    <div className="min-w-0">
+                      <div className="truncate font-medium tabular-nums">
+                        {formatShortDate(stats.peak.date)}
+                      </div>
+                      <div className="tabular-nums text-muted-foreground">
+                        day {stats.peak.day} · {formatPrice(stats.peak.price)} ·{" "}
+                        <span className="text-foreground">
+                          {formatMultiplier(stats.peak.multiplier)}
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <span className="text-muted-foreground">—</span>
                   )}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span>{s.cycle.current ? "Latest" : "Cycle end"}</span>
-                <span className="tabular-nums text-foreground">
-                  {s.last != null ? `${s.last.toFixed(2)}x` : "—"}
-                </span>
+                </div>
+
+                {/* Bottom */}
+                <div className="grid grid-cols-[72px_1fr] gap-1">
+                  <span className="text-muted-foreground">Bottom</span>
+
+                  {stats.bottom ? (
+                    <div className="min-w-0">
+                      <div className="truncate font-medium tabular-nums">
+                        {formatShortDate(stats.bottom.date)}
+                      </div>
+                      <div className="tabular-nums text-muted-foreground">
+                        day {stats.bottom.day} · {formatPrice(stats.bottom.price)} ·{" "}
+                        <span className="text-foreground">
+                          {Math.round(stats.bottom.drawdown)}%
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <span className="text-muted-foreground">—</span>
+                  )}
+                </div>
+
+                {/* End */}
+                <div className="grid grid-cols-[72px_1fr] gap-1">
+                  <span className="text-muted-foreground">End</span>
+
+                  {stats.end ? (
+                    <div className="tabular-nums font-medium">
+                      {formatPrice(stats.end.price)}
+                      <span className="ml-1.5 text-muted-foreground">
+                        · {formatMultiplier(stats.end.multiplier)}
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="text-muted-foreground">—</span>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
       </section>
     </div>
   )
